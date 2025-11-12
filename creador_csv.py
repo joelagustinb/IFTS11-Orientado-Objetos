@@ -1,4 +1,4 @@
-"""
+
 def crea_csv(nombre_archivo, columnas):
     file = open(nombre_archivo, "wt")
     csv_line = ",".join(columnas) + "\n"
@@ -19,7 +19,7 @@ def agrega_valores_csv(nombre_archivo):
     file.close()
 
 agrega_valores_csv("db.csv")
-"""
+
 
 # CLASE PRESENCIAL
 
