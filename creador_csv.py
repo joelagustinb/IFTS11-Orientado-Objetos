@@ -1,4 +1,4 @@
-
+"""
 def crea_csv(nombre_archivo, columnas):
     file = open(nombre_archivo, "wt")
     csv_line = ",".join(columnas) + "\n"
@@ -19,7 +19,7 @@ def agrega_valores_csv(nombre_archivo):
     file.close()
 
 agrega_valores_csv("db.csv")
-
+"""
 
 # CLASE PRESENCIAL
 
@@ -73,7 +73,23 @@ class Registro(object):
             atributos.append(f"{clave}: {valor}")
         clase = self.__class__.__name__  # Obtiene el nombre de la clase actual
         return f"{clase}({', '.join(atributos)})"
-
+    
+class Turno(Registro):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    def Validar(self):
+        if not hasattr(self,"cliente_id"):
+            return False
+        if not hasattr(self,"fecha"):
+            return False
+        if not hasattr(self,"hora"):
+            return False
+        return True
+    def fecha_hora(self):
+        from datetime import datetime
+        return datetime.strptime(f"{self.fecha} {self.hora}", "%Y-%m-%d %H:%M")
+    
+ 
 
 class Cliente(Registro):
     """Clase específica para registros de clientes"""
