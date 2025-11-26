@@ -1,6 +1,4 @@
-
 # CLASE PRESENCIAL
-
 class Transforma(object):
     def __init__(self, atributos, tipo_registro=None):
         # limpiamos atributos
@@ -55,7 +53,6 @@ class Registro(object):
 class Turno(Registro):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
 
 class Cliente(Registro):
     def __init__(self, **kwargs):
@@ -217,3 +214,23 @@ def listar_clientes(db_clientes):
         i += 1
 
 menu_principal()
+
+def crea_csv(nombre_archivo, columnas):
+    file = open(nombre_archivo, "wt")
+    csv_line = ",".join(columnas) + "\n"
+    file.writelines([csv_line])
+    file.close()
+
+
+def agrega_valores_csv(nombre_archivo):
+    file = open(nombre_archivo, "at")
+    nombre = input("Ingrese nombre: ")
+    while nombre != "":
+        apellido = input("Ingrese apellido: ")
+        dni = input("Ingrese DNI: ")
+        numero_cliente = input("Ingrese numero cliente: ")
+        vector = [nombre, apellido, dni, numero_cliente]
+        fila = ",".join(vector) + "\n"
+        file.writelines([fila])
+        nombre = input("Ingrese nombre: ")
+    file.close()
