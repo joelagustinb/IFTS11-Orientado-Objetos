@@ -1,4 +1,3 @@
-"""
 def crea_csv(nombre_archivo, columnas):
     file = open(nombre_archivo, "wt")
     csv_line = ",".join(columnas) + "\n"
@@ -12,71 +11,81 @@ def agrega_valores_csv(nombre_archivo):
     while nombre != "":
         apellido = input("Ingrese apellido: ")
         dni = input("Ingrese DNI: ")
-        vector = [nombre, apellido, dni]
+        numero_cliente = input("Ingrese numero cliente: ")
+        vector = [nombre, apellido, dni, numero_cliente]
         fila = ",".join(vector) + "\n"
         file.writelines([fila])
         nombre = input("Ingrese nombre: ")
     file.close()
 
-agrega_valores_csv("db.csv")
-"""
-
 # CLASE PRESENCIAL
 
 class Transforma(object):
     def __init__(self, atributos, tipo_registro=None):
-        self.keys = atributos
-        self.tipo_registro = tipo_registro or Registro  # Por defecto usa Registro genérico
+        # limpiamos atributos
+        clean = []
+        i = 0
+        while i < len(atributos):
+            clean.append(atributos[i].strip())
+            i += 1
+
+        self.keys = clean
+        self.tipo_registro = tipo_registro or Registro
 
     def toDict(self, values):
         if len(values) != len(self.keys):
             return None
+        
         d = {}
         i = 0
         while i < len(values):
-            d[self.keys[i]] = values[i]
-            i = i + 1
+            d[self.keys[i]] = values[i].strip()
+            i += 1
         return d
     
     def toObject(self, values):
-        """Convierte una lista de valores en un objeto del tipo especificado"""
-        if len(values) != len(self.keys):
-            return None
-        
-        # Creamos un diccionario para usar como **kwargs
         datos = {}
         i = 0
-        while i < len(values):
-            # Limpiamos los valores (quitamos saltos de línea)
+
+        # completar valores faltantes si vienen menos columnas
+        while len(values) < len(self.keys):
+            values.append("")
+
+        while i < len(self.keys):
             valor_limpio = values[i].strip()
-            datos[self.keys[i].strip()] = valor_limpio
-            i = i + 1
-        
-        # Creamos el objeto del tipo especificado usando **kwargs
+            clave = self.keys[i].strip()
+            datos[clave] = valor_limpio
+            i += 1
+
         obj = self.tipo_registro(**datos)
-        
         return obj
 
 
+
 class Registro(object):
-    """Clase base que representa un registro genérico de la base de datos"""
     def __init__(self, **kwargs):
-        # **kwargs nos permite recibir cualquier cantidad de argumentos con nombre
-        # Los asignamos como atributos del objeto
         for clave, valor in kwargs.items():
             setattr(self, clave, valor)
     
     def __str__(self):
-        """Representación en string del objeto"""
-        atributos = []
-        for clave, valor in self.__dict__.items():
-            atributos.append(f"{clave}: {valor}")
-        clase = self.__class__.__name__  # Obtiene el nombre de la clase actual
-        return f"{clase}({', '.join(atributos)})"
-    
+        # convertir __dict__ a "clave: valor" usando while
+        pares = []
+        keys = list(self.__dict__.keys())
+        i = 0
+        while i < len(keys):
+            k = keys[i]
+            v = self.__dict__[k]
+            pares.append(f"{k}: {v}")
+            i += 1
+
+        clase = self.__class__.__name__
+        return f"{clase}({', '.join(pares)})"
+
+
 class Turno(Registro):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
     def Validar(self):
         if not hasattr(self,"cliente_id"):
             return False
@@ -85,6 +94,7 @@ class Turno(Registro):
         if not hasattr(self,"hora"):
             return False
         return True
+    
     def fecha_hora(self):
         from datetime import datetime
         return datetime.strptime(f"{self.fecha} {self.hora}", "%Y-%m-%d %H:%M")
@@ -92,24 +102,25 @@ class Turno(Registro):
  
 
 class Cliente(Registro):
-    """Clase específica para registros de clientes"""
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)  # Llama al constructor de la clase padre
+        super().__init__(**kwargs)
     
     def validar(self):
-        """Validación específica para clientes"""
         if not hasattr(self, 'nombre') or self.nombre == "":
             return False
-        if hasattr(self, 'dni') and len(self.dni.strip()) != 8:
-            return False
+        
+        if hasattr(self, 'dni'):
+            dni = self.dni.strip()
+            if len(dni) != 8:
+                return False
+        
         return True
     
     def nombre_completo(self):
-        """Método específico para clientes"""
         if hasattr(self, 'apellido'):
             return f"{self.nombre} {self.apellido}"
         return self.nombre
-
+    
 class DB(object):
     def __init__(self, filename, tipo_registro=None):
         self.filename = filename
@@ -121,54 +132,132 @@ class DB(object):
             file = open(self.filename, "rt")
         except FileNotFoundError:
             return db
-        line = file.readline() # Leo encabezado
+        
+        line = file.readline()
         if line == "":
             return db
-        keys = line.split(",")
+        
+        keys = line.strip().split(",")
         tran = Transforma(keys, self.tipo_registro)
-        line = file.readline() # Leo la primera linea
+
+        line = file.readline()
         while line != "":
-            values = line.split(",")
-            # Ahora creamos objetos del tipo especificado
-            obj = tran.toObject(values)
-            if obj:  # Solo agregamos si el objeto se creó correctamente
-                db.append(obj)
+            if line.strip() != "":
+                values = line.strip().split(",")
+                obj = tran.toObject(values)
+                if obj:
+                    db.append(obj)
             line = file.readline()
+
         file.close()
         return db
 
     def write(self, registros):
         if len(registros) == 0:
             return
+        
         keys = list(registros[0].__dict__.keys())
+
         file = open(self.filename, "wt")
-        encabezado = ",".join(keys) + "\n"
-        file.writelines([encabezado])
-        for r in registros:
-            fila = ",".join([r.__dict__[k] for k in keys]) + "\n"
-            file.writelines([fila])
+        header = ",".join(keys) + "\n"
+        file.write(header)
+
+        i = 0
+        while i < len(registros):
+            r = registros[i]
+            fila = []
+            j = 0
+            while j < len(keys):
+                val = str(r.__dict__.get(keys[j], ""))
+                fila.append(val)
+                j += 1
+
+            file.write(",".join(fila) + "\n")
+            i += 1
+        
         file.close()
 
+class DBTurnos(DB):
     @classmethod
-    def crear_db_clientes(cls, filename):
-        """Método de clase para crear una DB específica para clientes"""
-        return cls(filename, Cliente)
+    def crear_db_turnos(cls, filename):
+        return cls(filename, Turno)
+
+#MENUS
+def menu_turnos(db_turnos):
+    opcion = ""
+    while opcion != "3":
+        print("\n--- MENU TURNOS ---")
+        print("1) Listar turnos")
+        print("2) Agregar turno")
+        print("3) Guardar y volver")
+        opcion = input("Opcion: ")
+
+        if opcion == "1":
+            turnos = db_turnos.read()
+            i = 0
+            while i < len(turnos):
+                print(turnos[i])
+                i += 1
+
+        elif opcion == "2":
+            cliente_id = input("ID del cliente: ")
+            fecha = input("Fecha (Dia/Mes): ")
+            hora = input("Hora (Hora:Minuto): ")
+            servicio = input("Servicio: ")
+
+            nuevo = Turno(
+                cliente_id=cliente_id,
+                fecha=fecha,
+                hora=hora,
+                servicio=servicio
+            )
+
+            turnos = db_turnos.read()
+            turnos.append(nuevo)
+            db_turnos.write(turnos)
+            print("Turno agregado")
+
+def menu_principal():
+    db_clientes = DB("clientes.csv", Cliente)
+    db_turnos = DBTurnos.crear_db_turnos("turnos.csv")
+
+    opcion = ""
+    while opcion != "4":
+        print("\n===== SISTEMA DE PELUQUERÍA =====")
+        print("1) Registrar nuevo cliente")
+        print("2) Gestionar turnos")
+        print("3) Listar clientes")
+        print("4) Salir")
+        opcion = input("Opción: ")
+
+        if opcion == "1":
+            registrar_cliente(db_clientes)
+
+        elif opcion == "2":
+            menu_turnos(db_turnos)
+
+        elif opcion == "3":
+            listar_clientes(db_clientes)
 
 
+def registrar_cliente(db_clientes):
+    nombre = input("Nombre: ")
+    apellido = input("Apellido: ")
+    dni = input("DNI: ")
+    numero_cliente = input("Numero Cliente: ")
+    nuevo = Cliente(nombre=nombre, apellido=apellido, dni=dni, numero_cliente= numero_cliente)
 
-diccionario = {
-    "name": "Emiliano",
-    "edad": 43,
-    "dni": 12821838
-}
+    clientes = db_clientes.read()
+    clientes.append(nuevo)
+    db_clientes.write(clientes)
 
-print(diccionario)
-print("Hola Mundo")
+    print("Cliente registrado correctamente.")
 
-for clave, valor in diccionario.items():
-    print("La clave es:", clave, "y el valor es:", valor)
+def listar_clientes(db_clientes):
+    clientes = db_clientes.read()
+    i = 0
+    while i < len(clientes):
+        print(clientes[i])
+        i += 1
 
-
-r = Registro(arnoldswartzennegger="Emiliano", edad=43, sexo="M")
-print(r.arnoldswartzennegger)
-print("\nHola\nMundo\n".replace("\n", ""))
+menu_principal()
